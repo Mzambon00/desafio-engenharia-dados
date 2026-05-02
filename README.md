@@ -99,3 +99,36 @@
 - **Regex (re)** - Validação de padrões (CPF, CNPJ, email, CEP)
 
 ## 📁 Estrutura do Projeto
+desafio-engenharia-dados/
+├── data/ # Dados de entrada (ignorado pelo Git)
+│ ├── orders/ # CSVs de pedidos (Teste 1)
+│ ├── leads/ # CSVs de leads (Teste 2)
+│ ├── sales/ # CSVs de vendas (Teste 3)
+│ ├── restaurants.xlsx # Tabela auxiliar Teste 1
+│ ├── campaigns.xlsx # Tabela auxiliar Teste 2
+│ └── products.xlsx # Tabela auxiliar Teste 3
+├── out/ # Resultados processados (ignorado)
+│ ├── clean_.csv # Dados limpos e validados
+│ ├── invalid_rows.csv # Registros com erros
+│ └── .xlsx # Relatórios gerenciais
+├── generate_data_test.py # Scripts para gerar dados de exemplo
+├── teste_processamento.py # Pipelines de processamento
+├── requirements.txt # Dependências do projeto
+└── README.md # Documentação
+
+
+## 🚀 Como Executar
+
+```bash
+# 1. Instalar dependências
+pip install -r requirements.txt
+
+# 2. Gerar dados de exemplo (opcional)
+python generate_data_test1.py
+python generate_data_test2.py
+python generate_data_test3.py
+
+# 3. Executar pipelines
+python teste1_processamento.py  # Processa pedidos de restaurante
+python teste2_processamento.py  # Processa leads de marketing
+python teste3_processamento.py  # Processa vendas e estoque
