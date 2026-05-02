@@ -1,0 +1,205 @@
+
+**Pipeline ETL** robusto em Python para consolidação, limpeza e validação de dados de transações comerciais. Projetado para lidar com dados reais imperfeitos de múltiplas fontes, normalizando documentos (CPF/CNPJ), convertendo moeda brasileira, deduplicando registros e gerando relatórios gerenciais em CSV e Excel.
+
+## 🎯 Objetivo do Projeto
+
+Automatizar o processo de **Extract, Transform, Load (ETL)** para dados provenientes de diferentes domínios de negócio (restaurantes, marketing e estoque). O pipeline é resiliente a inconsistências comuns em arquivos CSV (separadores variados, encodings diferentes, formatos de data e moeda) e garante a qualidade dos dados através de validações rigorosas, gerando bases confiáveis para análises.
+
+## 📦 Domínios e Funcionalidades
+
+O projeto é dividido em três cenários de negócio independentes, demonstrando a versatilidade do pipeline.
+
+### 1. 🍕 Processamento de Pedidos (Restaurante)
+*   **Objetivo**: Consolidar pedidos de delivery, calcular comissões e avaliar a performance dos entregadores e restaurantes.
+*   **Principais Regras**:
+    *   **Status**: Normaliza variações (`entregue`, `concluído`) para `delivered`; pedidos `cancelados` ou `em andamento` são rejeitados (ou marcados como inválidos).
+    *   **CPF**: Remove caracteres especiais, valida 11 dígitos e formata como `123.456.789-00`.
+    *   **Comissão**: Calculada como `total_amount * commission_rate`, apenas se o pedido for `delivered` e o valor total atingir o `min_order_amount` do restaurante.
+*   **Métricas Geradas**:
+    *   `commission`: valor da comissão.
+    *   `total_delivery_time`: soma do tempo de preparo e entrega.
+*   **Relatórios de Saída**:
+    *   `clean_orders.csv`: Dados de todos os pedidos válidos, enriquecidos.
+    *   `invalid_rows.csv`: Pedidos rejeitados com a razão da falha.
+    *   `restaurant_performance.xlsx`: Agregação por restaurante com total de pedidos, receita, comissão e tempo médio de entrega.
+
+### 2. 📈 Análise de Campanhas (Marketing)
+*   **Objetivo**: Processar leads de campanhas digitais, calcular o Retorno sobre o Investimento (ROI) e identificar canais lucrativos.
+*   **Principais Regras**:
+    *   **Email**: Valida formato usando regex.
+    *   **ROI**: Calculado como `(conversion_value - total_cost) / total_cost`.
+    *   **Lucratividade**: Um lead é classificado como `profitable` se o ROI for superior a 20%.
+*   **Métricas Geradas**:
+    *   `total_cost`: `clicks * cost_per_click`.
+    *   `roi`: Retorno sobre o investimento.
+    *   `is_profitable`: Booleano indicando se o lead é lucrativo.
+*   **Relatórios de Saída**:
+    *   `clean_leads.csv`: Leads válidos com as métricas calculadas.
+    *   `campaign_roi.xlsx`: Agregação por canal de marketing com ROI médio, investimento total e receita.
+
+### 3. 📦 Controle de Estoque e Vendas
+*   **Objetivo**: Reconciliar vendas com o estoque, identificando produtos com baixo giro e níveis críticos de inventário.
+*   **Principais Regras**:
+    *   **CNPJ**: Remove caracteres especiais, valida 14 dígitos e formata como `12.345.678/0001-00`.
+    *   **CEP**: Valida e formata como `12345-678`.
+    *   **Estoque**: Atualiza o saldo em execução (`running_stock`) a partir de um estoque inicial.
+*   **Métricas Geradas**:
+    *   `total_sale`: `quantity_sold * (unit_price - discount)`.
+    *   `running_stock`: Estoque remanescente após cada venda.
+*   **Relatórios de Saída**:
+    *   `clean_sales.csv`: Vendas válidas com o estoque corrente.
+    *   `inventory_report.xlsx`: Relatório de inventário por produto com status ("Critical", "Low", "OK") e dias de giro (`turnover_days`).
+
+## 🛠️ Tecnologias Utilizadas
+
+A pipeline foi desenvolvida com foco em eficiência, legibilidade e tratamento de dados do mundo real.
+
+*   **Linguagem:** Python 3.8+
+*   **Manipulação de Dados:** [Pandas](https://pandas.pydata.org/) - Para leitura, transformação e agregação de dados.
+*   **Arquivos Excel:** [OpenPyXL](https://openpyxl.readthedocs.io/) - Motor para geração de relatórios em `.xlsx`.
+*   **Validação de Padrões:** `re` (Regex) - Para validação de CPF, CNPJ, email e CEP.
+*   **Data e Moeda:** Módulos `datetime` e manipulação customizada de strings para lidar com o formato brasileiro (ex: `R$ 1.234,56`).
+
+### Arquitetura do Pipeline
+
+O fluxo de dados é consistente para todos os três cenários, garantindo a mesma robustez.
+
+```mermaid
+graph TD
+    A[Arquivos CSV de Entrada<br>(múltiplos lotes)] -->|Leitura com fallback<br>(UTF-8/Latin1, sep ,/;/|) B[Validação e Limpeza];
+    B -->|CPF, CNPJ, Email, Data| C{Registro Válido?};
+    C -- Sim --> D[Enriquecimento de Dados<br>(Join com Excel de negócio)];
+    D --> E[Cálculo de Métricas<br>(Comissão, ROI, Total da Venda)];
+    E --> F[Arquivos CSV de Saída<br>(dados limpos)];
+    C -- Não --> G[Arquivo CSV de Erros<br>(invalid_rows.csv)];
+    F --> H[Relatórios Gerenciais<br>(Agregações em Excel)];
+📁 Estrutura do Projeto
+A organização do repositório reflete a separação clara entre geração de dados, processamento e resultados.
+
+text
+.
+├── data/                          # Diretório para os dados de entrada (ignorado pelo Git)
+│   ├── orders/                    # CSVs de pedidos (Teste 1)
+│   ├── leads/                     # CSVs de leads (Teste 2)
+│   ├── sales/                     # CSVs de vendas (Teste 3)
+│   ├── restaurants.xlsx           # Tabela auxiliar (Teste 1)
+│   ├── campaigns.xlsx             # Tabela auxiliar (Teste 2)
+│   └── products.xlsx              # Tabela auxiliar (Teste 3)
+├── out/                           # Diretório com os resultados do processamento (ignorado)
+│   ├── clean_*.csv                # Dados limpos e validados
+│   ├── invalid_rows.csv           # Linhas rejeitadas com motivo
+│   └── *.xlsx                     # Relatórios gerenciais agregados
+├── generate_data_test*.py         # Scripts para gerar dados de exemplo (úteis para testes)
+├── teste*_processamento.py        # Pipelines de processamento principais
+├── requirements.txt               # Dependências do projeto
+└── README.md                      # Este arquivo
+🔧 Como Executar o Projeto
+Siga os passos abaixo para configurar e executar o pipeline em seu ambiente local.
+
+Pré-requisitos
+Python 3.8 ou superior instalado.
+
+pip (gerenciador de pacotes Python).
+
+Passo a Passo
+Clone o repositório
+
+bash
+git clone https://github.com/Mzambon00/desafio-engenharia-dados.git
+cd desafio-engenharia-dados
+Crie e ative um ambiente virtual (recomendado)
+
+bash
+# Linux/macOS
+python3 -m venv venv
+source venv/bin/activate
+
+# Windows
+python -m venv venv
+.\venv\Scripts\activate
+Instale as dependências
+
+bash
+pip install -r requirements.txt
+Gere os dados de exemplo (opcional, para testes)
+
+bash
+python generate_data_test1.py
+python generate_data_test2.py
+python generate_data_test3.py
+Execute as pipelines de processamento
+
+bash
+python teste1_processamento.py  # Processa pedidos de restaurante
+python teste2_processamento.py  # Processa leads de marketing
+python teste3_processamento.py  # Processa vendas e estoque
+Verifique os resultados
+Os arquivos de saída serão gerados dentro da pasta out/.
+
+📊 Exemplo Visual dos Resultados
+restaurant_performance.xlsx
+
+restaurant_name	total_orders	total_revenue	total_commission	avg_delivery_time
+Pizzaria Napoli	4	R$ 529,47	R$ 79,42	49 min
+Burger King	4	R$ 440,96	R$ 52,92	48 min
+Veggie Delight	3	R$ 308,53	R$ 30,85	65 min
+campaign_roi.xlsx
+
+channel	total_conversions	total_investment	total_revenue	average_roi	profitable_campaigns
+google_ads	10	R$ 12.202,97	R$ 26.706,79	506.7%	8
+facebook	9	R$ 8.354,00	R$ 22.723,52	1366.4%	8
+email	5	R$ 5.457,12	R$ 11.869,17	1064.5%	4
+💡 Principais Diferenciais e Aprendizados
+Este projeto foi desenvolvido para ir além do script simples, abordando desafios reais da engenharia de dados.
+
+Robustez a Dados Imperfeitos: O pipeline tenta múltiplos encodings (UTF-8, Latin1) e separadores (,, ;, |) automaticamente, evitando falhas na leitura.
+
+Normalização Completa: Não apenas valida, mas também padroniza formatos complexos como moeda brasileira (R$ 1.234,56 → 1234.56), CPF, CNPJ, CEP e datas.
+
+Isolamento de Erros: Dados inválidos são reportados em um arquivo separado (invalid_rows.csv) com a razão clara da falha, sem interromper o processamento do lote.
+
+Pipeline Auto-Contido: Os scripts de geração de dados permitem testar e demonstrar o funcionamento do pipeline de forma autônoma, sem depender de fontes externas.
+
+🚧 Possíveis Melhorias Futuras
+O projeto é um excelente ponto de partida e pode evoluir nas seguintes direções:
+
+Paralelização: Processar múltiplos arquivos de lote em paralelo para ganho de performance.
+
+Logging Estruturado: Adotar a biblioteca logging para monitoramento mais granular e persistente.
+
+Testes Unitários: Implementar testes com pytest para garantir a integridade das funções de validação (CPF, moeda, data).
+
+Configuração Externa: Mover regras de negócio (como limite_roi = 0.2) para um arquivo de configuração (.yaml ou .json).
+
+Integração com Banco de Dados: Ao invés de gerar CSVs, carregar os dados limpos diretamente em um banco (PostgreSQL, MySQL).
+
+📝 Licença
+Este projeto está sob a licença MIT. Consulte o arquivo LICENSE para mais informações.
+
+👨‍💻 Autor
+Marco Zambon
+https://img.shields.io/badge/GitHub-Mzambon00-181717?style=for-the-badge&logo=github https://img.shields.io/badge/LinkedIn-SeuPerfil-0A66C2?style=for-the-badge&logo=linkedin
+
+Projeto desenvolvido como parte de um desafio técnico para demonstrar habilidades em Engenharia de Dados, ETL com Python e Resolução de Problemas.
+
+⭐ Se este projeto foi útil para você, não esqueça de dar uma estrela no GitHub! ⭐
+
+text
+
+---
+
+### ✅ Próximos passos recomendados:
+
+1.  **Copie** o conteúdo do README acima.
+2.  **Cole** no arquivo `README.md` do seu repositório local (na raiz do projeto).
+3.  **Substitua** `[SeuLinkedInURL]` pelo link real do seu perfil.
+4.  **Adicione** o arquivo `requirements.txt` na raiz do projeto com o conteúdo:
+    ```text
+    pandas>=2.0.0
+    openpyxl>=3.1.0
+Envie as alterações para o GitHub:
+
+bash
+git add README.md requirements.txt
+git commit -m "docs: Adiciona README profissional e arquivo de dependências"
+git push origin main
